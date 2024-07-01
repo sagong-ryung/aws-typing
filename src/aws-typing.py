@@ -24,6 +24,11 @@ words_path = resource_path('resources/word.py')
 sys.path.insert(0, os.path.dirname(words_path))
 from resources.word import WORDS
 
+# レベル設定
+levels_path = resource_path('resources/level.py')
+sys.path.insert(0, os.path.dirname(levels_path))
+from resources.level import *
+
 # 設定値
 config_path = resource_path('resources/config.py')
 sys.path.insert(0, os.path.dirname(config_path))
@@ -33,18 +38,6 @@ from resources.config import *
 font_path = resource_path('resources/fonts/timemachine-wa.ttf')
 FONT_SIZE = 36
 FONT = pygame.font.Font(font_path, FONT_SIZE)  # 日本語フォントを指定
-
-# # 難易度オプション
-# difficulties = ["かんたん", "ふつう", "むずかしい"]
-
-# # ボタンの設定
-# button_width, button_height = 200, 50
-# button_y = HEIGHT // 2 - button_height // 2
-# buttons = []
-
-# for i, diff in enumerate(difficulties):
-#     button_x = WIDTH // 4 * (i + 1) - button_width // 2
-#     buttons.append(pygame.Rect(button_x, button_y, button_width, button_height))
 
 class Word:
     def __init__(self, text, x):
@@ -64,7 +57,7 @@ class Game:
 
     def __init__(self):
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
-        pygame.display.set_caption("タイピングゲーム")
+        pygame.display.set_caption("AWS Service Name Typing Game")
         self.clock = pygame.time.Clock()
         self.reset_game()
 
@@ -73,12 +66,15 @@ class Game:
         self.words:List[Word] = []
         self.current_word = ""
         self.score = 0
-        self.time_left = 60  # 60秒のゲーム時間
-        self.word_speed = 1 # 単語の落ちてくる速さ
+        self.time_left = TIME_LIMIT  # 60秒のゲーム時間
         self.input_text = ""
         self.composition = ""
-        self.word_generation_interval = 3000  # 単語を生成する間隔(ms)
-        self.exist_same_word_count = 5 #同時に存在できる単語の数
+        pygame.time.set_timer(self.GENERATE_WORD, 1000)
+    
+    def set_level(self, level: Level):
+        self.word_speed = level.word_speed # 単語の落ちてくる速さ
+        self.word_generation_interval = level.word_generation_interval  # 単語を生成する間隔(ms)
+        self.exist_same_word_count = level.exist_same_word_count #同時に存在できる単語の数
         pygame.time.set_timer(self.GENERATE_WORD, self.word_generation_interval)
 
     def generate_word(self):
@@ -90,6 +86,8 @@ class Game:
         while True:
             if self.state == START:
                 self.start_screen()
+            elif self.state == READY:
+                self.ready_screen()
             elif self.state == PLAYING:
                 self.game_screen()
             elif self.state == GAME_OVER:
@@ -98,6 +96,38 @@ class Game:
                 self.result_screen()
 
     def start_screen(self):
+        self.screen.fill(WHITE)
+        title_text = FONT.render("AWS タイピングゲーム", True, BLACK)
+        text_rect = title_text.get_rect(center=(WIDTH//2, HEIGHT//5))
+        self.screen.blit(title_text, text_rect)
+        
+        title = FONT.render("難易度を選んでください", True, BLACK)
+        title_rect = title.get_rect(center=(WIDTH//2, HEIGHT//5*2))
+        self.screen.blit(title, title_rect)
+
+        button_height = HEIGHT // 6
+        for i, level in enumerate(LEVELS):
+            button = pygame.Rect(WIDTH//4, HEIGHT//2 + i*button_height, WIDTH//2, button_height-10)
+            pygame.draw.rect(self.screen, BLACK, button, 2)
+            text = FONT.render(level.name, True, BLACK)
+            text_rect = text.get_rect(center=button.center)
+            self.screen.blit(text, text_rect)
+
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = pygame.mouse.get_pos()
+                for i, level in enumerate(LEVELS):
+                    button = pygame.Rect(WIDTH//4, HEIGHT//2 + i*button_height, WIDTH//2, button_height-10)
+                    if button.collidepoint(mouse_pos):
+                        self.set_level(level) # 0: かんたん, 1: ふつう, 2: むずかしい
+                        self.state = READY
+
+    def ready_screen(self):
         self.screen.fill(WHITE)
         text = FONT.render("スペースキーを押してスタート", True, BLACK)
         text_rect = text.get_rect(center=(WIDTH//2, HEIGHT//2))
@@ -114,6 +144,9 @@ class Game:
 
     def game_screen(self):
         self.screen.fill(WHITE)
+
+        if len(self.words) == 0:
+            self.words.append(self.generate_word())
 
         # Move and draw words
         for word in self.words:
@@ -180,7 +213,7 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     self.reset_game()
-                    self.state = PLAYING
+                    self.state = START
 
     def result_screen(self):
         self.screen.fill(WHITE)
@@ -201,7 +234,7 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     self.reset_game()
-                    self.state = PLAYING
+                    self.state = START
 
 if __name__ == "__main__":
     game = Game()
