@@ -1,0 +1,6 @@
+pyinstaller \
+    --onefile \
+    --add-data="<リソースフォルダ名>:<リソースフォルダ名>" \
+    --icon="<アイコン画像名>.ico" \
+    --noconsole \
+    <エントリーポイントファイル名>.py

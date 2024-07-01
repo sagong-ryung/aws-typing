@@ -1,0 +1,7 @@
+*.zip
+*.venv
+*build/
+*dist/
+*.sh
+*__pycache__
+*.spec
