@@ -59,6 +59,7 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("AWS Service Name Typing Game")
         self.clock = pygame.time.Clock()
+        self.start_time = 0
         self.reset_game()
 
     def reset_game(self):
@@ -69,13 +70,11 @@ class Game:
         self.time_left = TIME_LIMIT  # 60秒のゲーム時間
         self.input_text = ""
         self.composition = ""
-        pygame.time.set_timer(self.GENERATE_WORD, 1000)
     
     def set_level(self, level: Level):
         self.word_speed = level.word_speed # 単語の落ちてくる速さ
         self.word_generation_interval = level.word_generation_interval  # 単語を生成する間隔(ms)
         self.exist_same_word_count = level.exist_same_word_count #同時に存在できる単語の数
-        pygame.time.set_timer(self.GENERATE_WORD, self.word_generation_interval)
 
     def generate_word(self):
         text = random.choice(WORDS)
@@ -141,19 +140,22 @@ class Game:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     self.state = PLAYING
+                    self.start_time = pygame.time.get_ticks()  # ゲーム開始時刻を記録
+                    pygame.time.set_timer(self.GENERATE_WORD, self.word_generation_interval)
 
     def game_screen(self):
         self.screen.fill(WHITE)
 
+        # 始まった瞬間に単語を生成
         if len(self.words) == 0:
             self.words.append(self.generate_word())
 
-        # Move and draw words
+        # 単語を移動させていく & 描画
         for word in self.words:
             word.move(self.word_speed)
             word.draw(self.screen)
 
-            # Check for game over
+            # 単語の位置でゲームオーバーか判別
             if word.y > HEIGHT * 9/10:
                 self.state = GAME_OVER
 
@@ -172,7 +174,9 @@ class Game:
         pygame.display.flip()
 
         # Update time
-        self.time_left -= self.clock.get_time() / 1000
+        current_time = pygame.time.get_ticks()
+        elapsed_time = (current_time - self.start_time) / 1000  # 経過時間（秒）
+        self.time_left = max(0, TIME_LIMIT - elapsed_time)  # 残り時間を計算
         if self.time_left <= 0:
             self.state = RESULT
 
